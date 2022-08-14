@@ -1,7 +1,8 @@
 from urllib import response
 from boto3 import resource
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Attr, Key
 import config
+import hashlib
 
 AWS_ACCESS_KEY_ID = config.AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY = config.AWS_SECRET_ACCESS_KEY
@@ -90,18 +91,29 @@ def get_user(username):
 
 
 def title_by_director_range(director, start, end):
-    print(director, type(start), type(end))
     response = MovieTable.scan(
         FilterExpression=Attr('director').eq(
             director) & Attr('year').between(start, end)
     )
     return response
 
-def get_user_reviews(review):
+
+def get_user_reviews(review, language):
     response = MovieTable.scan(
-        FilterExpression = Attr('reviews_from_users').gte(review)
+        FilterExpression = Attr('language').eq(language) & Attr('reviews_from_users').gt(review)
     )
-    result = {}
-    for line in response['Items']:
-        result[line['title']] = int(line['reviews_from_users'])
-    return result
+    def comp(e):
+        return e['reviews_from_users']
+    response['Items'].sort(reverse=True, key=comp)
+    return response
+
+def get_title(year, country):
+    response = MovieTable.scan(
+        FilterExpression = Attr('country').eq(country) & Attr('year').eq(year)
+    )
+    print("Gooooooooooooooooooooooooooooooooood")
+    print("Hello",response['Items'])
+    def comp(e):
+        return e['budget']
+    response['Items'].sort(reverse=True,key=comp)
+    return response
