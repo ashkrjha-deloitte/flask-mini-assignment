@@ -1,10 +1,12 @@
-from flask import Flask, request, jsonify, make_response
+from urllib import response
+from flask import Flask, request, jsonify, make_response, g
 from functools import wraps
 import jwt
 import movie_service as dynamodb
 from werkzeug.security import generate_password_hash, check_password_hash
 import re
 import datetime
+from collections import OrderedDict
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'thisissecret'
@@ -49,8 +51,8 @@ def load_csv():
                     user_review = int(words[20])
                 else:
                     user_review = 0
-                results.append({'imdb_title_id': words[0], 'title': words[1], 'original_title': words[2], 'year': int(words[3]), 'date_published': words[4], 'genre': words[5], 'duration': words[6], 'country': words[7], 'language': words[8], 'director': words[9], 'writer': words[10], 'production_company': words[11],
-                               'actors': words[12], 'description': words[13], 'avg_vote': words[14], 'votes': words[15], 'budget': words[16], 'usa_gross_income': words[17], 'worldwide_gross_income': words[18], 'metascore': words[19], 'reviews_from_users': user_review, 'reviews_from_critics': words[21]})
+                results.append({'imdb_title_id': words[0], 'title': words[1].strip("\\\""), 'original_title': words[2], 'year': int(words[3]), 'date_published': words[4], 'genre': words[5], 'duration': words[6], 'country': words[7], 'language': words[8], 'director': words[9], 'writer': words[10], 'production_company': words[11],
+                               'actors': words[12], 'description': words[13], 'avg_vote': words[14], 'votes': words[15], 'budget': words[16], 'usa_gross_income': words[17], 'worldwide_gross_income': words[18], 'metascore': words[19], 'reviews_from_users': user_review, 'reviews_from_critics': words[21].rstrip("\\n")})
             count += 1
     return results
 
@@ -77,22 +79,15 @@ def get_book(director, start, end):
     response = dynamodb.title_by_director_range(director, start, end)
     if (response['ResponseMetadata']['HTTPStatusCode'] == 200):
         if ('Items' in response):
-            return {'Items': response['Items']}
+            return {'Title': response['Items'][0]['title']}
         return {'msg': 'Item not found!'}
     return {
         'msg': 'Some error occured',
         'response': response
     }
 
-
 @app.route('/login', methods=['POST'])
 def login():
-
-    # query = usertable.query(
-    #     IndexName='username',
-    #     KeyConditionExpression=Key('username').eq(request.form['username']),
-    #     FilterExpression=Attr('password').eq(hashlib.sha256(request.form['password'].encode('utf-8')).hexdigest())
-    # )
     data = request.get_json()
     username = data['username']
     password = data['password']
@@ -106,9 +101,14 @@ def login():
         print("B")
         token.decode("utf-8")
         print(type(token))
-        return jsonify({'token': token, 'message': 'token generated'}), 200
+        return jsonify({'token': token.decode('utf-8'), 'message': 'token generated'}), 200
     return jsonify({'message': 'failed to authenticate', 'error_code': 'Failed Auth'}), 200
 
+@app.route('/movies/<int:review>')
+def get_reviews(review):
+    response = dynamodb.get_user_reviews(review)
+    print(type(response))
+    return response
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5001, debug=True)

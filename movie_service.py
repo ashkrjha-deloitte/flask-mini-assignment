@@ -58,8 +58,10 @@ def create_table_movie():
     )
     return table, table2
 
+
 MovieTable = resource.Table('Movie')
 UserTable = resource.Table('User')
+
 
 def write_to_movie(item):
     response = MovieTable.put_item(
@@ -67,14 +69,16 @@ def write_to_movie(item):
     )
     return response
 
+
 def create_user(username, password):
     response = UserTable.put_item(
-        Item = {
+        Item={
             'username': username,
             'password': password
         }
     )
     return response
+
 
 def get_user(username):
     response = UserTable.get_item(
@@ -82,14 +86,22 @@ def get_user(username):
             'username': username
         }
     )
-    item = response['Item']
-    print(item)
     return response
+
 
 def title_by_director_range(director, start, end):
     print(director, type(start), type(end))
     response = MovieTable.scan(
-        FilterExpression = Attr('director').eq(director) & Attr('year').between(start, end)
+        FilterExpression=Attr('director').eq(
+            director) & Attr('year').between(start, end)
     )
-    print(response)
     return response
+
+def get_user_reviews(review):
+    response = MovieTable.scan(
+        FilterExpression = Attr('reviews_from_users').gte(review)
+    )
+    result = {}
+    for line in response['Items']:
+        result[line['title']] = int(line['reviews_from_users'])
+    return result
